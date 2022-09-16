@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import sara.SARAIO;
 
@@ -41,10 +42,14 @@ public class CfgMap {
 		return map.put(key, o);
 	}
 	
-	public Collection<?> getAsList(String key) {
+	public void clear() {
+		map.clear();
+	}
+	
+	public List<?> getAsList(String key) {
 		Object obj = map.get(key);
 		if(obj == null || !(obj instanceof Collection)) return null;
-		return (Collection<?>)obj;
+		return (List<?>)obj;
 	}
 	
 	public boolean save() {
@@ -62,6 +67,10 @@ public class CfgMap {
 			return false;
 		}
 		return true;
+	}
+	
+	public Set<String> propertySet() {
+		return map.keySet();
 	}
 	
 	private static Object cfgToObject(char[] cfg) {

@@ -22,8 +22,13 @@ public abstract class Applet {
 	protected final Applet parent;
 	private final Collection<Applet> children = new LinkedList<>();
 	
+	protected boolean greedy = false;
+	
 	private Applet(Applet parent, int w, int h) {
-		if(parent != null) this.parent = parent;
+		if(parent != null) {
+			this.parent = parent;
+			parent.children.add(this);
+		}
 		else {
 			if(SARA.root != null) throw new RuntimeException("There is already a root Applet ("+SARA.root+")!");
 			SARA.root = this;
@@ -67,6 +72,11 @@ public abstract class Applet {
 	
 	protected final void write(char c, Color fg, Color bg, int line, int col) {
 		screen.LCD[line][col] = c;
+		screen.FG[line][col] = fg;
+		screen.BG[line][col] = bg;
+	}
+	
+	protected final void setColor(Color fg, Color bg, int line, int col) {
 		screen.FG[line][col] = fg;
 		screen.BG[line][col] = bg;
 	}
@@ -262,7 +272,14 @@ public abstract class Applet {
 		public void keyReleased(KeyEvent e) {}
 
 		@Override
-		public void windowOpened(WindowEvent e) {}
+		public void windowOpened(WindowEvent e) {
+			for(Applet c : children) {
+				if(c.greedy) {
+					c.window.setExtendedState(JFrame.NORMAL);
+					c.window.toFront();
+				}
+			}
+		}
 
 		@Override
 		public void windowClosing(WindowEvent e) {
@@ -273,13 +290,31 @@ public abstract class Applet {
 		public void windowClosed(WindowEvent e) {}
 
 		@Override
-		public void windowIconified(WindowEvent e) {}
+		public void windowIconified(WindowEvent e) {
+			for(Applet c : children) {
+				c.window.setExtendedState(JFrame.ICONIFIED);
+			}
+		}
 
 		@Override
-		public void windowDeiconified(WindowEvent e) {}
+		public void windowDeiconified(WindowEvent e) {
+			for(Applet c : children) {
+				if(c.greedy) {
+					c.window.setExtendedState(JFrame.NORMAL);
+					c.window.toFront();
+				}
+			}
+		}
 
 		@Override
-		public void windowActivated(WindowEvent e) {}
+		public void windowActivated(WindowEvent e) {
+			for(Applet c : children) {
+				if(c.greedy) {
+					c.window.setExtendedState(JFrame.NORMAL);
+					c.window.toFront();
+				}
+			}
+		}
 
 		@Override
 		public void windowDeactivated(WindowEvent e) {}

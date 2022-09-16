@@ -45,19 +45,31 @@ public class StringTools {
 	
 	public static List<char[]> split(char[] c, final char regex) {
 		LinkedList<char[]> r = new LinkedList<>();
-		boolean inQuotes = false;
+		int inQuotes = -1;
 		int last = 0, len = 0;
 		for(int i = 0; i < c.length; i++, len++) {
-			if(c[i] == '"') {
-				inQuotes = !inQuotes;
-			} else if(c[i] == regex && !inQuotes) {
+			if(isQuoteChar(c[i]) && (inQuotes == -1 || inQuotes == c[i])) {
+				inQuotes = inQuotes != -1 ? -1 : c[i];
+			} else if(c[i] == regex && inQuotes == -1) {
+				if(isQuoteChar(c[last]) && isQuoteChar(c[last+len-1]) && c[last] == c[last+len-1]) {
+					last++;
+					len-=2;
+				}
 				r.add(sectionOf(c, last, len));
 				last=i+1;
 				len = -1;
 			}
 		}
+		if(last < len && isQuoteChar(c[last]) && isQuoteChar(c[last+len-1]) && c[last] == c[last+len-1]) {
+			last++;
+			len-=2;
+		}
 		r.add(sectionOf(c, last, len));
 		return r;
+	}
+	
+	private static boolean isQuoteChar(char c) {
+		return c == 0x22 || c == 0x27;
 	}
 	
 	public static String[] toArgs(char[] c) {
@@ -96,6 +108,6 @@ public class StringTools {
 	}
 	
 	public static boolean isPrintableKey(int code) {
-		return (code > 0x28 || code == 0x20);
+		return (code > 28 || code == 20);
 	}
 }

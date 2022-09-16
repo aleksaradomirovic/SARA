@@ -14,6 +14,7 @@ public abstract class ScrollableApplet extends Applet {
 		repaint();
 	}
 	private int scrollPos = 0;
+	protected boolean fatlock = false;
 	
 	ArrayList<TextLine> lines = new ArrayList<>(),
 			unwrapped = new ArrayList<>();
@@ -21,11 +22,18 @@ public abstract class ScrollableApplet extends Applet {
 		final char[] text;
 		final Color fg, bg;
 		TextLine(char[] text, Color fg, Color bg) {
-			if(text.length > lineWidth) throw new RuntimeException("Text line '"+String.valueOf(text)+"' is too long!");
+//			if(text.length > lineWidth) throw new RuntimeException("Text line '"+String.valueOf(text)+"' is too long!");
 			this.text = text;
 			this.fg = fg;
 			this.bg = bg;
 		}
+	}
+	
+	protected void clear() {
+		unwrapped.clear();
+		lines.clear();
+		
+		repaint();
 	}
 	
 	protected void writeLine(String str, Color fg, Color bg) {
@@ -57,14 +65,14 @@ public abstract class ScrollableApplet extends Applet {
 	@Override
 	protected void repaint() {
 //		long ms = System.currentTimeMillis();
-		scrollRange = lines.size()-1;
+		scrollRange = fatlock ? lines.size()-portHeight : lines.size()-1;
 //		System.out.println(range);
 		TextLine line;
 //		System.out.println(scrollPos);
 		for(int h = 0; h < portHeight; h++) {
 			clear(h);
 		}
-		for(int l = scrollPos, h = 0; l <= scrollRange && h < portHeight; l++, h++) {
+		for(int l = scrollPos, h = 0; l < lines.size() && h < portHeight; l++, h++) {
 			line = lines.get(l);
 			write(line.text,line.fg,line.bg,h,0);
 		}

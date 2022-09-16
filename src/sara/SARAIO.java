@@ -44,6 +44,7 @@ public class SARAIO {
 		writer.close();
 		
 		f.delete();
+		f.getParentFile().mkdirs();
 		temp.renameTo(f);
 	}
 	
@@ -64,6 +65,7 @@ public class SARAIO {
 		writer.close();
 
 		f.delete();
+		f.getParentFile().mkdirs();
 		temp.renameTo(f);
 	}
 	
@@ -137,8 +139,12 @@ public class SARAIO {
 	}
 	
 	public static File makeAbsolute(File f) {
+		return makeAbsolute(f, LOCALAPPDATA);
+	}
+	
+	public static File makeAbsolute(File f, File dir) {
 		if(f.isAbsolute()) return f;
-		return new File(LOCALAPPDATA+"\\"+f);
+		return new File(dir+"\\"+f);
 	}
 	
 	private static void copyIntoByteField(byte[] target, byte[] from, int offset) {

@@ -1,10 +1,9 @@
-package sara.apps.core;
+package sara;
 
 import java.awt.Color;
+import java.util.Arrays;
 import java.util.Collection;
 
-import sara.ConsoleApplet;
-import sara.SARA;
 import sara.util.CfgMap;
 import sara.util.StringTools;
 
@@ -132,8 +131,14 @@ public class SARAMain extends ConsoleApplet {
 					
 					break;
 				}
+				case "run": {
+					if(SARA.runApplet(args[1], Arrays.copyOfRange(args, 2, argct))) writeLine("Opening app '"+args[1]+"'...");
+					else writeErr("No such app '"+args[1]+"'!");
+					break;
+				}
 				default: {
-					writeErr("Unknown argument '"+args[0]+"'!");
+					if(SARA.runApplet(args[0], Arrays.copyOfRange(args, 1, argct))) writeLine("Opening app '"+args[0]+"'...");
+					else writeErr("Unknown argument '"+args[0]+"'!");
 				}
 			}
 		} catch(ArrayIndexOutOfBoundsException e) {

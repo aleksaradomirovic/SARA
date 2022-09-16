@@ -2,7 +2,13 @@ package sara;
 
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.HeadlessException;
+import java.awt.Toolkit;
+import java.awt.datatransfer.DataFlavor;
+import java.awt.datatransfer.UnsupportedFlavorException;
 import java.awt.event.KeyEvent;
+import java.io.IOException;
+
 import sara.util.StringTools;
 
 public abstract class ConsoleApplet extends ScrollableApplet {
@@ -30,7 +36,7 @@ public abstract class ConsoleApplet extends ScrollableApplet {
 	}
 	
 	char[] input;
-	int lastChar = 0;
+	int lastChar = 0, writePos = 0;
 	
 	@Override
 	protected void repaint() {
@@ -42,8 +48,9 @@ public abstract class ConsoleApplet extends ScrollableApplet {
 			int pos = 2;
 			for(int i = (lastChar > inputWidth ? lastChar-inputWidth : 0); i < lastChar; i++, pos++) {
 				write(input[i],portHeight,pos);
+				if(i == writePos) setColor(Color.BLACK, insert ? Color.RED : Color.WHITE, portHeight, pos);
 			}
-			write('\u2588',portHeight,pos);
+			if(writePos == lastChar) setColor(Color.BLACK, insert ? Color.RED : Color.WHITE, portHeight, pos);
 		}
 		super.repaint();
 	}
@@ -51,6 +58,7 @@ public abstract class ConsoleApplet extends ScrollableApplet {
 	public void openQA(int sz) {
 		input = new char[sz];
 		lastChar = 0;
+		writePos = 0;
 		repaint();
 	}
 	
@@ -70,6 +78,7 @@ public abstract class ConsoleApplet extends ScrollableApplet {
 		writeLine(str,Color.YELLOW,null);
 	}
 	
+	private boolean insert = false;
 	protected boolean echo = true;
 //	private int pastCommand;
 //	ArrayList<char[]> commandHistory = new ArrayList<>(); TODO
@@ -78,10 +87,52 @@ public abstract class ConsoleApplet extends ScrollableApplet {
 		super.keyPressed(e);
 		
 		if(input != null) {
+			switch(e.getKeyCode()) {
+				case KeyEvent.VK_LEFT: {
+					if(writePos > 0) writePos--;
+					break;
+				}
+				case KeyEvent.VK_RIGHT: {
+					if(writePos < lastChar) writePos++;
+					break;
+				}
+			}
+			
 			switch(e.getKeyChar()) {
-				case KeyEvent.VK_DELETE:
+				case KeyEvent.VK_DELETE: {
+					if(writePos < lastChar) {
+						for(int i = writePos; i < lastChar;) {
+							input[i] = input[++i];
+						}
+						lastChar--;
+					}
+					break;
+				}
 				case KeyEvent.VK_BACK_SPACE: {
-					if(lastChar > 0) input[--lastChar] = 0;
+					if(writePos > 0 && lastChar > 0) {
+						for(int i = writePos-1; i < lastChar;) {
+							input[i] = input[++i];
+						}
+						lastChar--;
+						writePos--;
+					}
+					break;
+				}
+				case 0x16: {
+					try {
+						char[] clipboard = ((String)Toolkit.getDefaultToolkit().getSystemClipboard().getData(DataFlavor.stringFlavor)).toCharArray();
+						if(lastChar + clipboard.length <= input.length) {
+							for(int i = writePos; writePos < lastChar;) {
+								input[i+clipboard.length] = input[i++];
+							}
+							for(int j = 0; j < clipboard.length;) {
+								input[writePos++] = clipboard[j++];
+							}
+							lastChar += clipboard.length;
+						}
+					} catch (HeadlessException | UnsupportedFlavorException | IOException e1) {
+						e1.printStackTrace();
+					}
 					break;
 				}
 				case 0x1A: {
@@ -96,10 +147,20 @@ public abstract class ConsoleApplet extends ScrollableApplet {
 					scrollTo(Math.min(0, scrollRange-portHeight));
 					break;
 				}
+				case KeyEvent.VK_INSERT: {
+					insert = !insert;
+					break;
+				}
 				default: {
-					if(StringTools.isPrintableKey(e.getKeyCode()) && e.getKeyChar() != 0xffff) {
-						input[lastChar++] = e.getKeyChar();
-					}
+					if(lastChar < input.length && StringTools.isPrintableKey(e.getKeyChar()) && e.getKeyChar() != 0xffff) {
+						if(!insert) {
+							for(int i = lastChar; i > writePos;) {
+								input[i] = input[--i];
+							}
+							lastChar++;
+						} else if(writePos == lastChar) lastChar++;
+						input[writePos++] = e.getKeyChar();
+					}// else System.out.println((int)e.getKeyCode());
 					break;
 				}
 			}
