@@ -71,11 +71,11 @@ public abstract class ConsoleApplet extends ScrollableApplet {
 	}
 	
 	protected void writeErr(String str) {
-		writeLine(str,Color.RED,null);
+		writeln(str,Color.RED,null);
 	}
 	
 	protected void writeWarn(String str) {
-		writeLine(str,Color.YELLOW,null);
+		writeln(str,Color.YELLOW,null);
 	}
 	
 	private boolean insert = false;
@@ -142,7 +142,7 @@ public abstract class ConsoleApplet extends ScrollableApplet {
 				case KeyEvent.VK_ENTER: {
 					char[] command = StringTools.sectionOf(input, 0, lastChar);
 					openQA(input.length);
-					if(echo) writeLine("> "+String.valueOf(command));
+					if(echo) writeln("> "+String.valueOf(command));
 					handleCommand(command);
 					scrollTo(Math.min(0, scrollRange-portHeight));
 					break;

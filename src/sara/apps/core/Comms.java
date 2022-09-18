@@ -43,7 +43,7 @@ public final class Comms extends ConsoleApplet {
 	private class CommsInputListener implements SARANET.SARANETInputHandler {
 		@Override
 		public void report(String msg) {
-			writeLine(msg);
+			writeln(msg);
 		}
 
 		@Override

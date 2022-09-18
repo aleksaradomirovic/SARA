@@ -6,7 +6,7 @@ public abstract class Localization {
 	 * @param count Amount of objects
 	 * @return plural form
 	 */
-	public abstract String toPlural(String str, int count);
+	public abstract String toPlural(String str, long count);
 	
 	/**
 	 * Checks if a string is affirmative (like "yes") or negative (like "no")

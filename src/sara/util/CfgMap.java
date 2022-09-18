@@ -6,14 +6,17 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.SortedMap;
 
 import sara.SARAIO;
 
 public class CfgMap {
-	private final HashMap<String,Object> map;
+	private final Map<String,Object> map;
 	public final File file;
+	
 	public CfgMap(File f) {
 		file = f;
 		List<char[]> lines;

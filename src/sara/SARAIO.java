@@ -13,7 +13,7 @@ public class SARAIO {
 	public static final File LOCALAPPDATA;
 	
 	static {
-		LOCALAPPDATA = new File(System.getenv("LOCALAPPDATA")+"\\SARA");
+		LOCALAPPDATA = new File(System.getenv("LOCALAPPDATA")+File.separator+"SARA");
 		LOCALAPPDATA.mkdirs();
 	}
 	
@@ -144,7 +144,7 @@ public class SARAIO {
 	
 	public static File makeAbsolute(File f, File dir) {
 		if(f.isAbsolute()) return f;
-		return new File(dir+"\\"+f);
+		return new File(dir+File.separator+f);
 	}
 	
 	private static void copyIntoByteField(byte[] target, byte[] from, int offset) {

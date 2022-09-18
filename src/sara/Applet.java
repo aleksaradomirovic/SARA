@@ -5,7 +5,6 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.RenderingHints;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.WindowEvent;
@@ -201,7 +200,7 @@ public abstract class Applet {
 			updateFontMetrics();
 			int w = LCD[0].length, h = LCD.length;
 			
-			prefSize = new Dimension(w*FONT_WIDTH + FONT_HEADING * 2, h*FONT_HEIGHT);
+			prefSize = new Dimension(w*FONT_WIDTH + FONT_HEADING * 2, h*FONT_HEIGHT + FONT_HEADING * 2);
 			display.setPreferredSize(prefSize);
 			if(display.isDisplayable()) {
 				buffer = display.createVolatileImage(prefSize.width, prefSize.height);
@@ -239,7 +238,7 @@ public abstract class Applet {
 				graphics.clearRect(0, 0, prefSize.width, prefSize.height);
 				revert = false;
 //				long ms = System.currentTimeMillis();
-				for(int l = 0, h = FONT_ASCENT; l < LCD.length; l++, h+=FONT_HEIGHT) {
+				for(int l = 0, h = FONT_ASCENT + FONT_HEADING; l < LCD.length; l++, h+=FONT_HEIGHT) {
 					if(revert) break; // if revert just go and repaint
 					for(int c = 0, w = FONT_HEADING; c < LCD[l].length; c++, w+=FONT_WIDTH) {
 						if(BG[l][c] != null) {

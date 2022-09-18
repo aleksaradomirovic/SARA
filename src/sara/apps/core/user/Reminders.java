@@ -9,6 +9,7 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -18,6 +19,7 @@ import java.util.ListIterator;
 
 import sara.Applet;
 import sara.ConsoleApplet;
+import sara.SARA;
 import sara.SARAIO;
 import sara.annotations.Independent;
 import sara.annotations.SaveDir;
@@ -30,13 +32,12 @@ public class Reminders extends ConsoleApplet {
 	private static final File save = SARAIO.makeAbsolute(new File("user/reminders.cfg"));
 	final ZoneId systemZone;
 	static final ZoneId GMT = ZoneId.of("GMT");
-	private final CfgMap cfg;
+	private CfgMap cfg;
 
 	public Reminders(Applet parent, String[] args) {
 		super(parent, "Reminders");
 		fatlock = true;
 		systemZone = ZoneId.systemDefault();
-		cfg = new CfgMap(save);
 		reminders = new HashMap<>();
 		echo = false;
 	}
@@ -44,15 +45,17 @@ public class Reminders extends ConsoleApplet {
 
 	@Override
 	protected void init() {
+		cfg = new CfgMap(save);
 		for(String s : cfg.propertySet()) {
 			Reminder r = new Reminder(s);
 			List<?> properties = cfg.getAsList(s);
 			r.date = ZonedDateTime.of(LocalDateTime.parse((String)properties.get(0),Reminder.saveFormat), GMT).withZoneSameInstant(systemZone);
 			r.alert = ((Double)properties.get(1)).intValue();
 			r.description = (String)properties.get(2);
+			r.complete = ((Double)properties.get(3)).intValue() != 0;
 			
-			if(properties.size() > 3) {
-				ListIterator<?> iter = properties.listIterator(3);
+			if(properties.size() > 4) {
+				ListIterator<?> iter = properties.listIterator(4);
 				while(iter.hasNext()) {
 					r.notes.add((String) iter.next());
 				}
@@ -60,6 +63,7 @@ public class Reminders extends ConsoleApplet {
 			
 			reminders.put(s, r);
 		}
+		edit = true;
 		
 		display();
 		openQA();
@@ -81,6 +85,7 @@ public class Reminders extends ConsoleApplet {
 			in.add(r.date.withZoneSameInstant(GMT).format(Reminder.saveFormat));
 			in.add(r.alert);
 			in.add(r.description);
+			in.add(r.complete ? 1 : 0);
 			for(String s : r.notes) {
 				in.add(s);
 			}
@@ -90,18 +95,22 @@ public class Reminders extends ConsoleApplet {
 		if(edit) cfg.save();
 	}
 	
+	private boolean showcomplete = true;
 	private void display() {
 		clear();
 		List<Reminder> rems = new LinkedList<>(reminders.values());
 		Collections.sort(rems);
 		
 		for(Reminder r : rems) {
-			writeLine(r.name+" - "+r.date.format(Reminder.format), Color.BLACK, ReminderHandler.alert(r.alert));
-			writeLine(r.description);
+			if(!showcomplete && r.complete) continue;
+			write((r.complete ? "\t\u25a0 " : "\t\u25a1 ")+r.name+" "+r.date.format(Reminder.format), Color.BLACK, Color.WHITE);
+			r.warn();
+			
+			if(r.description.length() > 0) writeln(r.description);
 			for(String s : r.notes) {
-				writeLine(" - "+s);
+				writeln(" - "+s);
 			}
-			writeLine("");
+			writeln("");
 		}
 	}
 	
@@ -119,8 +128,25 @@ public class Reminders extends ConsoleApplet {
 				case "new": {
 					String text = String.join(" ", Arrays.copyOfRange(args, 1, argct));
 					new ReminderHandler(this, getReminder(text));
-					edit = true;
 					
+					break;
+				}
+				case "checkoff":
+				case "check":
+				case "complete": {
+					String text = String.join(" ", Arrays.copyOfRange(args, 1, argct));
+					Reminder r = reminders.get(text);
+					if(r != null) r.complete = true;
+					
+					display();
+					break;
+				}
+				case "uncheck":
+				case "uncomplete": {
+					String text = String.join(" ", Arrays.copyOfRange(args, 1, argct));
+					Reminder r = reminders.get(text);
+					if(r != null) r.complete = false;
+					display();
 					break;
 				}
 				default: {
@@ -154,21 +180,21 @@ public class Reminders extends ConsoleApplet {
 		
 		private void display() {
 			clear();
-			writeLine("Name:        "+reminder.name);
-			writeLine("Date/Time:   "+reminder.date.format(Reminder.format));
-			writeLine("\t            ["+reminder.date.withZoneSameInstant(GMT).format(Reminder.formatRigid)+"]");
-			writeLine("Description: "+reminder.description);
-			writeLine("Alert:       "+reminder.alert, Color.BLACK, alert(reminder.alert));
-			writeLine("Notes:    "+(!reminder.notes.isEmpty() ? "1. "+reminder.notes.get(0) : ""));
+			writeln("Name:        "+reminder.name);
+			writeln("Date/Time:   "+reminder.date.format(Reminder.format));
+			writeln("\t            ["+reminder.date.withZoneSameInstant(GMT).format(Reminder.formatRigid)+"]");
+			writeln("Description: "+reminder.description);
+			writeln("Alert:       "+reminder.alert, Color.BLACK, alert(reminder.alert));
+			writeln("Notes:    "+(!reminder.notes.isEmpty() ? "1. "+reminder.notes.get(0) : ""));
 			if(reminder.notes.size() > 1) {
 				ListIterator<String> iter = reminder.notes.listIterator(1);
 				int i = 2;
 				while(iter.hasNext()) {
-					writeLine("\t         "+(i++)+". "+iter.next());
+					writeln("\t         "+(i++)+". "+iter.next());
 				}
 			}
 			
-			writeLine(err, Color.RED, null);
+			writeln(err, Color.RED, null);
 		}
 		
 		private static Color alert(int i) {
@@ -308,6 +334,9 @@ public class Reminders extends ConsoleApplet {
 						
 						break;
 					}
+					case "complete": {
+						
+					}
 					case "alert": {
 						switch(args[1].toLowerCase()) {
 							case "0":
@@ -356,11 +385,12 @@ public class Reminders extends ConsoleApplet {
 				format = DateTimeFormatter.ofPattern("uuuu-MM-dd (EEEE) hh:mma v"),
 				formatRigid = DateTimeFormatter.ofPattern("uuuu-MM-dd (EEEE) HH:mm v"),
 				saveFormat = DateTimeFormatter.ofPattern("uuuu-MM-dd-HH-mm"),
-				commandFormat = DateTimeFormatter.ofPattern("uuuu-MM-dd [HH:mm]");
+				commandFormat = DateTimeFormatter.ofPattern("uuuu-MM-dd[ HH:mm]");
 		
 		String name, description = "";
 		ZonedDateTime date;
 		int alert = 0; // 0-3
+		boolean complete = false;
 		LinkedList<String> notes = new LinkedList<>();
 		
 		Reminder(String n) {
@@ -372,8 +402,27 @@ public class Reminders extends ConsoleApplet {
 			return ZonedDateTime.of(LocalDate.now().plusDays(1), LocalTime.of(0, 0), systemZone);
 		}
 		
-		String toSave() {
-			return String.join("\",\"", new String[] { name, date.format(format) });
+		public void warn() {
+			ZonedDateTime now = ZonedDateTime.now();
+			if(now.isAfter(date)) {
+				writeln("");
+				return;
+			}
+			
+			long result;
+			if((result = now.until(date, ChronoUnit.MONTHS)) > 0) {
+				writeln("\t- in "+result+" "+SARA.loc.toPlural("month", result));
+			} else if((result = now.until(date, ChronoUnit.WEEKS)) > 0) {
+				writeln("\t- in "+result+" "+SARA.loc.toPlural("week", result), (alert > 2 && result < 3) ? Color.YELLOW : null, null);
+			} else if((result = now.until(date, ChronoUnit.DAYS)) > 0) {
+				writeln("\t- in "+result+" "+SARA.loc.toPlural("day", result), (alert > 0 ? (result > 3 ? (alert > 2 ? Color.ORANGE : Color.YELLOW) 
+						: (alert > 2 ? Color.RED : (alert > 1 ? Color.ORANGE : Color.YELLOW))) : null), null);
+			} else if((result = now.until(date, ChronoUnit.HOURS)) > 0) {
+				writeln("\t- in "+result+" "+SARA.loc.toPlural("hour", result), (alert > 0 ? (alert > 1 ? Color.RED : Color.ORANGE) : Color.YELLOW), null);
+			} else {
+				result = now.until(date, ChronoUnit.MINUTES);
+				writeln("\t- in "+result+" "+SARA.loc.toPlural("minute", result), (alert > 0 ? Color.RED : Color.ORANGE), null);
+			}
 		}
 
 		@Override

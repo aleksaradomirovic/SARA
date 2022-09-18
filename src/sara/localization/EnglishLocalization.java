@@ -1,7 +1,7 @@
 package sara.localization;
 
 public class EnglishLocalization extends Localization {
-	public String toPlural(String str, int count) {
+	public String toPlural(String str, long count) {
 		if(count == 1) return str;
 		if(str.endsWith("s")) return str+"es";
 		return str+"s";

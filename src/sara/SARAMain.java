@@ -14,17 +14,17 @@ public class SARAMain extends ConsoleApplet {
 
 	@Override
 	protected void init() {
-		writeLine("SARA [Supportive Analytic Reciprocal Assistant]",null,Color.BLUE);
-		writeLine("Version: "+SARA.version);
-		writeLine("User "+System.getProperty("user.name")+" on "+System.getProperty("os.name")+" ["+System.getProperty("os.arch")+"]");
+		writeln("SARA [Supportive Analytic Reciprocal Assistant]",null,Color.BLUE);
+		writeln("Version: "+SARA.version);
+		writeln("User "+System.getProperty("user.name")+" on "+System.getProperty("os.name")+" ["+System.getProperty("os.arch")+"]");
 		setup();
-		writeLine("Welcome, "+SARA.username+"!", Color.CYAN, null);
+		writeln("Welcome, "+SARA.username+"!", Color.CYAN, null);
 		
 		openQA();
 	}
 	
 	private void setup() {
-		writeLine("Loading user data...");
+		writeln("Loading user data...");
 		CfgMap cfg = new CfgMap(new java.io.File("userdata.cfg"));
 		SARA.userdata = cfg;
 		Collection<?> list;
@@ -64,7 +64,7 @@ public class SARAMain extends ConsoleApplet {
 			switch(args[0]) {
 				case "@echo": {
 					if(argct < 2) {
-						writeLine("Echo is: "+echo);
+						writeln("Echo is: "+echo);
 						break;
 					}
 					
@@ -75,24 +75,24 @@ public class SARAMain extends ConsoleApplet {
 						writeErr("Unknown argument '"+args[1]+"', needs 'yes' or 'no'");
 						break;
 					}
-					writeLine("Echo is now: "+echo);
+					writeln("Echo is now: "+echo);
 					
 					break;
 				}
 				case "say":
 				case "echo": {
-					writeLine(argct >= 2 ? args[1] : "");
+					writeln(argct >= 2 ? args[1] : "");
 					break;
 				}
 				case "echo.": {
-					writeLine("");
+					writeln("");
 					break;
 				}
 				case "names":
 				case "name": {
 					if(argct < 2) {
-						writeLine("Names: "+SARA.names);
-						writeLine("Preferred: "+SARA.username);
+						writeln("Names: "+SARA.names);
+						writeln("Preferred: "+SARA.username);
 						break;
 					}
 					
@@ -102,7 +102,7 @@ public class SARAMain extends ConsoleApplet {
 							if(SARA.names.contains(args[2])) writeErr(args[2]+" already exists as a name!");
 							else {
 								SARA.names.add(args[2]);
-								writeLine("Added name '"+args[2]+"'");
+								writeln("Added name '"+args[2]+"'");
 							}
 							
 							break;
@@ -113,7 +113,7 @@ public class SARAMain extends ConsoleApplet {
 								else if(SARA.names.size() < 2) writeErr("Can't remove names if you have less than 2 left!");
 								else {
 									SARA.names.remove(args[2]);
-									writeLine("Removed name '"+args[2]+"'");
+									writeln("Removed name '"+args[2]+"'");
 								}
 							} else writeErr("No name '"+args[2]+"' to remove!");
 							break;
@@ -123,7 +123,7 @@ public class SARAMain extends ConsoleApplet {
 							if(!SARA.names.contains(args[2])) SARA.names.add(args[2]);
 							SARA.username = args[2];
 							
-							writeLine("Preferred username set to '"+args[2]+"'");
+							writeln("Preferred username set to '"+args[2]+"'");
 							
 							break;
 						}
@@ -132,12 +132,12 @@ public class SARAMain extends ConsoleApplet {
 					break;
 				}
 				case "run": {
-					if(SARA.runApplet(args[1], Arrays.copyOfRange(args, 2, argct))) writeLine("Opening app '"+args[1]+"'...");
+					if(SARA.runApplet(args[1], Arrays.copyOfRange(args, 2, argct))) writeln("Opening app '"+args[1]+"'...");
 					else writeErr("No such app '"+args[1]+"'!");
 					break;
 				}
 				default: {
-					if(SARA.runApplet(args[0], Arrays.copyOfRange(args, 1, argct))) writeLine("Opening app '"+args[0]+"'...");
+					if(SARA.runApplet(args[0], Arrays.copyOfRange(args, 1, argct))) writeln("Opening app '"+args[0]+"'...");
 					else writeErr("Unknown argument '"+args[0]+"'!");
 				}
 			}

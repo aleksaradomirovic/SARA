@@ -4,10 +4,10 @@ import java.util.LinkedList;
 import java.util.List;
 
 public class StringTools {
-	public static List<char[]> softWrap(char[] str, final int width) {
+	public static List<char[]> softWrap(char[] str, final int width, final int offset) {
 		LinkedList<char[]> r = new LinkedList<>();
 		
-		int len = 0, breakline = -1, idx = 0;
+		int len = offset, breakline = -1, idx = 0;
 		for(;idx < str.length; idx++, len++) {
 			if(len == width) { // shouldn't ever be greater
 				breakline = breakline != -1 ? breakline : idx;
@@ -69,7 +69,7 @@ public class StringTools {
 	}
 	
 	private static boolean isQuoteChar(char c) {
-		return c == 0x22 || c == 0x27;
+		return c == 0x22 /* || c == 0x27 */;
 	}
 	
 	public static String[] toArgs(char[] c) {
@@ -94,6 +94,7 @@ public class StringTools {
 	
 	public static char[] trim(char[] str) {
 		int st = 0, len = str.length;
+		if(len == 0) return str.clone();
 		for(;str[st] <= 0x20; st++, len--);
 		for(;str[st+len-1] <= 0x20; len--);
 //		if(len == str.length) return str; // maybe for optimization?

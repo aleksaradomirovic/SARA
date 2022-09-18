@@ -19,7 +19,7 @@ public class SARA {
 	static final Canvas drawTester = new Canvas();
 	static Applet root;
 	static final Collection<Applet> allApps = new LinkedList<>();
-	public static final String version = "3\u03b1.1.1";
+	public static final String version = "3\u03b1.1.2";
 	public static Localization loc;
 	
 	public static CfgMap userdata;
@@ -29,9 +29,9 @@ public class SARA {
 	public static void main(String[] args) throws IOException {
 		loc = new sara.localization.EnglishLocalization();
 		
-		loadAllApps();
-		
 		new SARAMain();
+		
+		loadAllApps();
 	}
 	
 	private static HashMap<String, Constructor<?>> appShortcuts;
