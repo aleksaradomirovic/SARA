@@ -2,115 +2,101 @@ package sara.util;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
-import java.util.SortedMap;
 
 import sara.SARAIO;
 
 public class CfgMap {
-	private final Map<String,Object> map;
-	public final File file;
+	public File saveFile;
+	private final Map<String,Object> props;
 	
 	public CfgMap(File f) {
-		file = f;
-		List<char[]> lines;
-		map = new HashMap<>();
-		try {
-			lines = StringTools.split(SARAIO.loadFileAsText(f), '\n');
-		} catch (IOException e) {
-			return;
+		saveFile = f;
+		props = new HashMap<>();
+		reload();
+	}
+	
+	public void reload() {
+		props.clear();
+		
+		int[] file;
+		try { file = SARAIO.asText(SARAIO.loadFile(saveFile)); }
+		catch(IOException e) { return; }
+		
+		int mode = 0;
+		int last = 0;
+		char[] key = null;
+		for(int i = 0; i < file.length; i++) {
+			switch(mode) {
+				case 0:
+					if(file[i] == '=') {
+						mode = 1;
+						last = i+1;
+						key = SARAIO.getChars(file, last, i-last);
+					}
+					break;
+				case 1:
+					if(file[i] == 0) {
+						props.put(String.valueOf(key).toLowerCase(), strToCfgObj(SARAIO.getChars(file, last, i)));
+						mode = 0;
+						last = i+1;
+					}
+					break;
+			}
 		}
 		
-		for(char[] line : lines) {
-			int eq = StringTools.indexOf(line, '=');
-			if(eq == -1) continue;
-			
-			String key = String.valueOf(line,0,eq).trim();
-			if(map.put(key, cfgToObject(StringTools.sectionOf(line, eq+1))) != null) System.err.println("Property '"+key+"' in '"+file+"' is double-declared!");
-		}
-//		System.out.println(map);
+		System.out.println(props);
 	}
 	
-	public Object get(String key) {
-		return map.get(key);
-	}
-	
-	public Object put(String key, Object o) {
-		return map.put(key, o);
-	}
-	
-	public void clear() {
-		map.clear();
-	}
-	
-	public List<?> getAsList(String key) {
-		Object obj = map.get(key);
-		if(obj == null || !(obj instanceof Collection)) return null;
-		return (List<?>)obj;
-	}
-	
-	public boolean save() {
-		char[][] out = new char[map.size()][];
-		int i = 0;
-		for(Entry<String, Object> entry : map.entrySet()) {
-			String str = entry.getKey()+"="+objectToCfg(entry.getValue());
-			out[i] = str.toCharArray();
-			i++;
-		}
-		try {
-			SARAIO.saveText(file, out);
-		} catch (IOException e) {
-			e.printStackTrace();
-			return false;
-		}
-		return true;
-	}
-	
-	public Set<String> propertySet() {
-		return map.keySet();
-	}
-	
-	private static Object cfgToObject(char[] cfg) {
-		cfg = StringTools.trim(cfg);
-		
-		if(cfg.length >= 2) {
-			if(cfg[0] == '"' && cfg[cfg.length-1] == '"') return String.valueOf(cfg,1,cfg.length-2);
-			if(cfg[0] == '[' && cfg[cfg.length-1] == ']') {
+	private static Object strToCfgObj(char[] x) {
+		switch(x[0]) {
+			case '[':
 				LinkedList<Object> r = new LinkedList<>();
-				if(cfg.length == 2) return r;
-				
-				for(char[] c : StringTools.split(StringTools.sectionOf(cfg, 1, cfg.length-2), ',')) {
-					c = StringTools.trim(c);
-					r.add(cfgToObject(c));
+				if(x.length <= 1) return r;
+				int last = 0, i;
+				for(i = 1; i < x.length; i++) {
+					if(x[i] == 1) {
+						r.add(strToCfgObj(StringTools.sectionOf(x, last, i-last)));
+						last = i+1;
+					}
 				}
+				r.add(strToCfgObj(StringTools.sectionOf(x, last, i-last)));
 				return r;
-			}
+			case '#':
+				return Double.parseDouble(String.valueOf(x,1,x.length-1));
+			case '"':
+				return String.valueOf(x,1,x.length-1);
 		}
 		
-		String str = String.valueOf(cfg);
-		try { return Double.parseDouble(str); } catch(NumberFormatException e) {}
-		return str;
+		return String.valueOf(x);
 	}
 	
-	private static String objectToCfg(Object obj) {
-		String out;
-		if(obj instanceof Collection) {
+	private static String cfgObjToString(Object o) {
+		if(o instanceof Number) {
+			return "#"+((Number)o).doubleValue();
+		} else if(o instanceof java.util.Collection) {
 			StringBuilder sb = new StringBuilder("[");
-			for(Object o : (Collection<?>)obj) {
-				sb.append(objectToCfg(o));
-				sb.append(',');
+			for(Object obj : (java.util.Collection<?>)o) {
+				sb.append(cfgObjToString(obj)+'\u0001');
 			}
-			sb.setCharAt(sb.length()-1, ']');
-			out = sb.toString();
-		} else if(obj instanceof String) {
-			out = '"'+((String)obj)+'"';
-		} else out = obj.toString();
-		return out;
+			if(sb.length() > 1) return sb.substring(0, sb.length()-1);
+			return sb.toString();
+		}
+		
+		return "\""+o.toString();
+	}
+	
+	public void save() throws IOException {
+		StringBuilder sb = new StringBuilder();
+		for(Entry<String,Object> e : props.entrySet()) {
+			sb.append(e.getKey());
+			sb.append('=');
+			sb.append(cfgObjToString(e.getValue()));
+			sb.append('\u0000');
+		}
+		SARAIO.saveToFile(SARAIO.toByteStream(sb.toString().toCharArray(), SARAIO.UTF_16_BE), saveFile);
 	}
 }

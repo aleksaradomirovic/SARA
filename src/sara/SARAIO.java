@@ -1,163 +1,166 @@
 package sara;
 
 import java.io.File;
+import java.io.FileFilter;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
 public class SARAIO {
-	public static final long file_max_length = Integer.MAX_VALUE;
-	public static final int bufsz_byte = 16384,
-							bufsz_char = bufsz_byte / 2;
-	
-	public static final File LOCALAPPDATA;
+	public static final String LOCALAPPDATA;
 	
 	static {
-		LOCALAPPDATA = new File(System.getenv("LOCALAPPDATA")+File.separator+"SARA");
-		LOCALAPPDATA.mkdirs();
+		LOCALAPPDATA = System.getenv("LOCALAPPDATA")+"\\SARA";
+	}
+	
+	public static class FileExtensionFilter implements FileFilter {
+		private final String[] exts;
+		
+		public FileExtensionFilter(String[] exts) {
+			for(int i = 0; i < exts.length; i++) {
+				exts[i] = exts[i].trim().toLowerCase();
+			}
+			this.exts = exts;
+		}
+		public FileExtensionFilter(String ext) {
+			this(new String[] {ext});
+		}
+
+		@Override
+		public boolean accept(File pathname) {
+			String ext = pathname.getName().substring(pathname.getName().lastIndexOf('.')+1);
+			for(String e : exts) {
+				if(e.equals(ext)) return true;
+			}
+			return false;
+		}
+		
 	}
 	
 	public static byte[] loadFile(File f) throws IOException {
-		f = makeAbsolute(f);
-		if(f.length() > Integer.MAX_VALUE) throw new FileTooLargeException(f);
-		int filesz = (int) f.length();
 		FileInputStream reader = new FileInputStream(f);
-		byte[] out = new byte[filesz],
-			buf = new byte[bufsz_byte];
-		int len, pos = 0;
-		while((len = reader.read(buf)) > 0) {
-			copyIntoByteField(out, buf, pos);
-			pos += len;
-		}
+		byte[] r = reader.readAllBytes();
 		reader.close();
-		return out;
+		return r;
 	}
 	
-	public static void save(File f, byte[] bytes) throws IOException {
-		File temp = makeAbsolute(new File(f.getName()+".tmp"));
-		temp.delete();
-		temp.createNewFile();
-		f = makeAbsolute(f);
-		
-		FileOutputStream writer = new FileOutputStream(temp, false);
-		writer.write(bytes);
-		writer.close();
-		
-		f.delete();
-		f.getParentFile().mkdirs();
-		temp.renameTo(f);
-	}
+	public static final int UTF_8 = 0, UTF_8_BOM = 3, UTF_16_BE = 2, UTF_32_BE = 4;
 	
-	private static final byte[] BE_BOM = new byte[] { (byte) 0xFE, (byte) 0xFF },
-			NL_CHAR = new byte[] { (byte) 0x00, (byte) 0x0A };
-	public static void saveText(File f, char[][] field) throws IOException {
-		File temp = makeAbsolute(new File(f.getName()+".tmp"));
-		temp.delete();
-		temp.createNewFile();
-		f = makeAbsolute(f);
+	public static int BOM(byte[] f) throws IOException {
+		if(f.length < 2) return 0;
+		int comp = (f[0] & 0xff) << 8 | (f[1] & 0xff);
+//		System.out.println(Integer.toHexString(comp));
 		
-		FileOutputStream writer = new FileOutputStream(temp,true);
-		writer.write(BE_BOM);
-		for(char[] buf : field) {
-			writer.write(toBE(buf));
-			writer.write(NL_CHAR);
+		switch(comp) {
+			case 0xfeff: return UTF_16_BE;
+			case 0xfffe: throw new IOException("LE charsets not supported! Your file is either using UTF-16-LE-BOM or UTF-32-LE-BOM (little-endian) encoding!");
 		}
-		writer.close();
-
-		f.delete();
-		f.getParentFile().mkdirs();
-		temp.renameTo(f);
+		if(f.length == 2) return 0;
+		
+		comp = comp << 8 | (f[2] & 0xff);
+//		System.out.println(Integer.toHexString(comp));
+		if(comp == 0xefbbbf) return UTF_8_BOM;
+		if(f.length == 3) return 0;
+		
+		comp = comp << 8 | (f[3] & 0xff);
+//		System.out.println(Integer.toHexString(comp));
+		if(comp == 0x0000feff) return UTF_32_BE;
+		
+		return 0;
 	}
 	
-	public static byte[] toBE(char[] field) {
-		byte[] out = new byte[field.length*2];
+	public static int charsz(int encoding) {
+		return encoding % 2 == 0 ? encoding : 1;
+	}
+	
+	public static int[] asText(byte[] f) throws IOException {
+		final int enc = BOM(f), wt = charsz(enc);
+		if((f.length-enc) % wt != 0) System.err.println("End of text field is jagged! Ignoring final "+((f.length-enc) % wt)+" bytes...");
 		
-		int f;
-		for(int i = 0, j = 0; i < field.length; i++, j+=2) {
-			f = field[i];
-			out[j] = (byte)(f >> 8);
-			out[j+1] = (byte)(f);
+		int[] r = new int[(f.length-enc)/wt];
+		
+		if(wt == 1) for(int i = enc, j = 0; i < f.length; i++, j++)
+			r[j] = f[i] & 0xff;
+		else if(wt == 2) for(int i = enc+wt-1, j = 0; i < f.length; i+=wt, j++)
+			r[j] = ((f[i-1] & 0xff) << 8) | (f[i] & 0xff);
+		else if(wt == 4) for(int i = enc+wt-1, j = 0; i < f.length; i+=wt, j++)
+			r[j] = ((f[i-3] & 0xff) << 24) | ((f[i-2] & 0xff) << 16) | ((f[i-1] & 0xff) << 8) | (f[i] & 0xff);
+		return r;
+	}
+	
+	public static char[] getChars(int[] f, int offset, int len) {
+		char[] r = new char[len];
+		for(int i = 0; i < len; i++, offset++) {
+			r[i] = (char) f[offset];
 		}
-		
-//		System.out.println(out.length);
-		return out;
+		return r;
 	}
 	
-	public static char[] loadFileAsText(File f) throws IOException {
-		return toCharField(loadFile(f));
-	}
+	public static byte[] toByteStream(char[] in, final int encoding) {
+		final int wt = charsz(encoding);
+		byte[] r = new byte[in.length*wt + encoding];
 		
-	public static void printByteField(byte[] field) {
-		for(int i = 0; i < field.length; i++) {
-			System.out.print((char)(field[i])+" ");
-			if(i % 8 == 0) System.out.println();
+		switch(encoding) {
+			case 3: { // UTF8BOM
+				r[0] = (byte) 0xef;
+				r[1] = (byte) 0xbb;
+				r[2] = (byte) 0xbf;
+			}
+			case 0: {
+				for(int i = encoding, j = 0; j < in.length; j++) {
+					r[i++] = (byte) (in[j] & 0xff);
+				}
+				break;
+			}
+			case 2: { // UTF16
+				r[0] = (byte) 0xfe;
+				r[1] = (byte) 0xff;
+				
+				for(int i = encoding, j = 0; j < in.length; j++) {
+					r[i++] = (byte) ((in[j] >> 8) & 0xff);
+					r[i++] = (byte) ((in[j]) & 0xff);
+				}
+				break;
+			}
+			case 4: { // UTF32
+				r[0] = (byte) 0x00;
+				r[1] = (byte) 0x00;
+				r[2] = (byte) 0xfe;
+				r[3] = (byte) 0xff;
+				
+				for(int i = encoding, j = 0; j < in.length; j++) {
+					r[i++] = (byte) 0x00;
+					r[i++] = (byte) 0x00;
+					r[i++] = (byte) ((in[j] >> 8) & 0xff);
+					r[i++] = (byte) ((in[j]) & 0xff);
+				}
+				break;
+			}
+			default: throw new IllegalArgumentException("Unknown encoding of id "+encoding);
 		}
-	}
-	
-	public static char[] toCharField(byte[] bytes) throws IOException {
-		if(bytes.length % 2 != 0 || bytes.length < 2) throw new IOException("Odd number of bytes -- char parser doesn't accept UTF-8 encoding!");
-		int BOM0 = toBigEndian(bytes[0], bytes[1]);
-//		System.out.println(BOM0);
-		
-		if(BOM0 == 0xFFFE) return charFieldLE(bytes, 2); // Little-endian
-		else if(BOM0 == 0xFEFF) return charFieldBE(bytes, 2); // Big-endian declared
-		else if(BOM0 == 0xEFBB) throw new IOException("Won't accept UTF-8 encoding!"); //UTF-8 BOM
-		else return charFieldBE(bytes, 0); // no BOM declared, so Big-endian undeclared 
-	}
-	
-//	private static long toBigEndian(byte b0, byte b1, byte b2, byte b3) {
-//		return ((b0 & 0xff) << 24) | ((b1 & 0xff) << 16) | ((b2 & 0xff) << 8) | (b3 & 0xff);
-//	}
-	
-	public static char[] charFieldBE(byte[] bytes, int from) {
-		if(bytes.length % 2 != 0) throw new IllegalArgumentException("Odd number of bytes in field!");
-		char[] r = new char[(bytes.length-from)/2];
-		
-		for(int i = from, pos = 0; i < bytes.length; i+=2, pos++) 
-			r[pos] = (char)toBigEndian(bytes[i], bytes[i+1]);
 		
 		return r;
 	}
 	
-	public static char[] charFieldLE(byte[] bytes, int from) {
-		if(bytes.length % 2 != 0) throw new IllegalArgumentException("Odd number of bytes in field!");
-		char[] r = new char[(bytes.length-from)/2];
-		
-		for(int i = from, pos = 0; i < bytes.length; i+=2, pos++) 
-			r[pos] = (char)toLittleEndian(bytes[i], bytes[i+1]);
-		
+	public static void saveToFile(byte[] field, File f) throws IOException {
+		File tmp = getTempFile(f);
+		FileOutputStream writer = new FileOutputStream(tmp);
+		writer.write(field);
+		writer.close();
+		finalizeTempFile(tmp, f);
+	}
+	
+	public static File getTempFile(File as) throws IOException {
+		File tmp = new File(LOCALAPPDATA+as.getName()+".tmp");
+		tmp.createNewFile();
+		return tmp;
+	}
+	
+	public static boolean finalizeTempFile(File tmp, File to) {
+		if(to.exists()) to.delete();
+		to.getParentFile().mkdirs();
+		boolean r = tmp.renameTo(to);
+		tmp.delete();
 		return r;
-	}
-	
-	public static int toBigEndian(byte b0, byte b1) {
-//		System.out.println(b0+" "+b1);
-		return ((b0 & 0xff) << 8) | (b1 & 0xff);
-	}
-	
-	public static int toLittleEndian(byte b0, byte b1) {
-		return ((b1 & 0xff) << 8) | (b0 & 0xff);
-	}
-	
-	public static File makeAbsolute(File f) {
-		return makeAbsolute(f, LOCALAPPDATA);
-	}
-	
-	public static File makeAbsolute(File f, File dir) {
-		if(f.isAbsolute()) return f;
-		return new File(dir+File.separator+f);
-	}
-	
-	private static void copyIntoByteField(byte[] target, byte[] from, int offset) {
-		for(int i = 0; i < from.length && offset < target.length; i++, offset++) {
-			target[offset] = from[i];
-		}
-	}
-	
-	public static class FileTooLargeException extends IOException {
-		private static final long serialVersionUID = 4534735515174090596L;
-		
-		public FileTooLargeException(File f) {
-			super("File '"+f.getPath()+"' was too large to load! (size: "+f.length()+" bytes)");
-		}
 	}
 }

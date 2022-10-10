@@ -1,50 +1,44 @@
 package sara;
 
 import java.awt.Color;
-import java.util.Arrays;
-import java.util.Collection;
+import java.lang.reflect.InvocationTargetException;
 
-import sara.util.CfgMap;
 import sara.util.StringTools;
 
 public class SARAMain extends ConsoleApplet {
-	public SARAMain() {
-		super(null,160,40,"SARA Main");
+	public SARAMain(Applet parent) {
+		super(parent,160,40);
 	}
 
 	@Override
-	protected void init() {
-		writeln("SARA [Supportive Analytic Reciprocal Assistant]",null,Color.BLUE);
-		writeln("Version: "+SARA.version);
-		writeln("User "+System.getProperty("user.name")+" on "+System.getProperty("os.name")+" ["+System.getProperty("os.arch")+"]");
-		setup();
-		writeln("Welcome, "+SARA.username+"!", Color.CYAN, null);
+	protected void onInit() {
+		writeln("SARA [Supportive Analytic Reciprocal Analog]", null, Color.BLUE);
+		writeln("v"+SARA.version, null, Color.BLUE);
 		
-		openQA();
+		SARAAppLoader.init();
+		printSysInfo();
+//		System.out.println(SARA.starts);
+		
+		input.open();
 	}
 	
-	private void setup() {
-		writeln("Loading user data...");
-		CfgMap cfg = new CfgMap(new java.io.File("userdata.cfg"));
-		SARA.userdata = cfg;
-		Collection<?> list;
-		
-		if((list = cfg.getAsList("names")) == null) {
-			writeWarn("No names found, adding system username...");
-			SARA.names.add(System.getProperty("user.name"));
-		} else {
-			for(Object o : list) {
-				if(o instanceof String) SARA.names.add((String)o);
-			}
-		}
-		
-		if((SARA.username = (String)cfg.get("username")) == null) {
-			SARA.username = SARA.names.get(0);
-		}
+	private void printSysInfo() {
+		writeln("Environment:");
+		writeln("Operating System  = "+System.getProperty("os.name")+" v"+System.getProperty("os.version")+" ["+System.getProperty("os.arch")+"]");
+		writeln("Local user        = \""+System.getProperty("user.name")+"\"");
+		Runtime rt = Runtime.getRuntime();
+		writeln("Max memory        = "+(rt.totalMemory()/1048576)+" MiB");
+		writeln("Free memory       = "+(rt.freeMemory()/1048576)+" MiB");
+		writeln("Available threads = "+rt.availableProcessors()+"");
+	}
+	
+	private void printAppInfo() {
+		writeln("SARA info:");
+		writeln("Open app count = "+countTree());
 	}
 
 	@Override
-	protected void update() {
+	protected void onUpdate() {
 		// TODO Auto-generated method stub
 		
 	}
@@ -56,95 +50,56 @@ public class SARAMain extends ConsoleApplet {
 	}
 
 	@Override
-	protected void handleCommand(char[] command) {
-		final String[] args = StringTools.toArgs(command);
-		final int argct = args.length;
+	protected void handleInput(char[] str) {
+		String[] args = StringTools.split(str, ' ');
+		int argct = args.length;
 		
 		try {
 			switch(args[0]) {
-				case "@echo": {
-					if(argct < 2) {
-						writeln("Echo is: "+echo);
-						break;
-					}
-					
-					int yn = SARA.loc.affirmative(args[1]);
-					if(yn > 0) echo = true;
-					if(yn < 0) echo = false;
-					else {
-						writeErr("Unknown argument '"+args[1]+"', needs 'yes' or 'no'");
-						break;
-					}
-					writeln("Echo is now: "+echo);
-					
-					break;
-				}
 				case "say":
 				case "echo": {
-					writeln(argct >= 2 ? args[1] : "");
+					writeln(argct > 1 ? args[1] : "");
 					break;
 				}
-				case "echo.": {
-					writeln("");
-					break;
-				}
-				case "names":
-				case "name": {
-					if(argct < 2) {
-						writeln("Names: "+SARA.names);
-						writeln("Preferred: "+SARA.username);
+				case "@echo": {
+					int ans = SARA.loc.affirmative(args[1]);
+					if(ans == 0) {
+						writeln("'"+args[1]+"' is neither an affirmative nor negative command!",Color.red, null);
 						break;
 					}
-					
-					switch(args[1]) {
-						case "new":
-						case "add": {
-							if(SARA.names.contains(args[2])) writeErr(args[2]+" already exists as a name!");
-							else {
-								SARA.names.add(args[2]);
-								writeln("Added name '"+args[2]+"'");
-							}
-							
-							break;
-						}
-						case "remove": {
-							if(SARA.names.contains(args[2])) {
-								if(SARA.username.equals(args[2])) writeErr("Can't remove preferred name! (change preferred name first)");
-								else if(SARA.names.size() < 2) writeErr("Can't remove names if you have less than 2 left!");
-								else {
-									SARA.names.remove(args[2]);
-									writeln("Removed name '"+args[2]+"'");
-								}
-							} else writeErr("No name '"+args[2]+"' to remove!");
-							break;
-						}
-						case "favorite":
-						case "preferred": {
-							if(!SARA.names.contains(args[2])) SARA.names.add(args[2]);
-							SARA.username = args[2];
-							
-							writeln("Preferred username set to '"+args[2]+"'");
-							
-							break;
-						}
-					}
-					
+					echo = ans > 0;
+					writeln("Echo is now "+echo+"!");
 					break;
 				}
-				case "run": {
-					if(SARA.runApplet(args[1], Arrays.copyOfRange(args, 2, argct))) writeln("Opening app '"+args[1]+"'...");
-					else writeErr("No such app '"+args[1]+"'!");
+				case "info": {
+					switch(args[1]) {
+						case "system":
+							printSysInfo();
+							break;
+						case "app":
+						case "sara":
+							printAppInfo();
+							break;
+					}
 					break;
 				}
 				default: {
-					if(SARA.runApplet(args[0], Arrays.copyOfRange(args, 1, argct))) writeln("Opening app '"+args[0]+"'...");
-					else writeErr("Unknown argument '"+args[0]+"'!");
+					if(SARA.starts.containsKey(args[0])) {
+						writeln("Starting '"+args[0]+"'...");
+						try {
+							SARA.starts.get(args[0]).newInstance(this, args);
+						} catch (InstantiationException | IllegalAccessException | IllegalArgumentException
+								| InvocationTargetException e) {
+							writeln("Failed to start '"+args[0]+"'!",Color.red, null);
+							e.printStackTrace();
+						}
+					} else writeln("Unknown command '"+args[0]+"'!",Color.red, null);
 				}
 			}
 		} catch(ArrayIndexOutOfBoundsException e) {
-			writeErr("Too few arguments provided!");
+			writeln("Too few arguments provided!",Color.red, null);
 		}
 		
-		openQA();
+		input.open();
 	}
 }

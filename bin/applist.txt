@@ -1,0 +1,3 @@
+sara.apps.housekeeping.Reminders
+sara.apps.core.GameHub
+sara.apps.core.games.Solitaire

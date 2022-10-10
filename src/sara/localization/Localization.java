@@ -1,16 +1,10 @@
 package sara.localization;
 
-public abstract class Localization {
+public interface Localization {
 	/**
-	 * @param str Object noun to be made plural
-	 * @param count Amount of objects
-	 * @return plural form
+	 * 
+	 * @param str String to check if an affirmative input.
+	 * @return n > 0 if affirmative, n < 0 if negative, n = 0 if unknown
 	 */
-	public abstract String toPlural(String str, long count);
-	
-	/**
-	 * Checks if a string is affirmative (like "yes") or negative (like "no")
-	 * @return 1 if affirmative, -1 if negative, 0 if neither
-	 */
-	public abstract int affirmative(String str);
+	public int affirmative(String str);
 }

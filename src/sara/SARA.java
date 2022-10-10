@@ -1,124 +1,75 @@
 package sara;
 
-import java.awt.Canvas;
-import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.Map;
 
-import sara.annotations.Independent;
-import sara.annotations.SaveDir;
+import sara.localization.EnglishLocalization;
 import sara.localization.Localization;
-import sara.util.CfgMap;
 
 public class SARA {
-	static final Canvas drawTester = new Canvas();
-	static Applet root;
-	static final Collection<Applet> allApps = new LinkedList<>();
-	public static final String version = "3\u03b1.1.2";
-	public static Localization loc;
-	
-	public static CfgMap userdata;
-	public static List<String> names = new LinkedList<>();
-	public static String username;
+	static {
+		loc = new EnglishLocalization();
+		gmt = ZoneOffset.UTC;
+		
+		root = new SARAMain(null);
+	}
 	
 	public static void main(String[] args) throws IOException {
-		loc = new sara.localization.EnglishLocalization();
-		
-		new SARAMain();
-		
-		loadAllApps();
+//		System.out.println(" 000| 111  222  333  444  555  666  777  AAA".length());
+//		System.out.println(DateTimeFormatter.ofPattern("dd MM yyyy HH mm").parse("09 10 2022 10 57"));
 	}
 	
-	private static HashMap<String, Constructor<?>> appShortcuts;
-	private static HashMap<File, Class<?>> fileAssignments;
-	private static void loadAllApps() {
-		appShortcuts = new HashMap<>();
-		fileAssignments = new HashMap<>();
-		
-		Independent assignment; SaveDir save;
-		for(Class<?> c : SARAClassLoader.getAllApps()) {
-//			System.out.println(c);
-			if((assignment = c.getAnnotation(Independent.class)) != null) {
-				try {
-					Constructor<?> constructor = c.getConstructor(new Class<?>[] { Applet.class, String[].class });
-					for(String name : assignment.names()) {
-						if(appShortcuts.get(name) != null) System.err.println("Duplicate shortcuts for "+appShortcuts.get(name).getDeclaringClass()+" and "+c+"!");
-						appShortcuts.put(name, constructor);
-						System.out.println("Assigned shortcut '"+name+"' to "+c);
-					}
-				} catch(NoSuchMethodException e) {
-					e.printStackTrace();
-				}
-			}
-			
-			if((save = c.getAnnotation(SaveDir.class)) != null) {
-				for(String s : save.paths()) {
-					File f = SARAIO.makeAbsolute(new File(s));
-					if(fileAssignments.get(f) != null) System.err.println("Both "+fileAssignments.get(f)+" and "+c+" are saving to '"+f+"'!");
-					fileAssignments.put(f, c);
-					System.out.println("Assigned file/directory '"+f+"' to "+c);
-				}
-			}
-		}
+	static Map<String,Constructor<Applet>> starts;
+	static ArrayList<Constructor<Applet>> apps;
+	
+	public static final String version = "4\u03b1.0.0";
+	
+	@SuppressWarnings("unchecked")
+	public static Collection<Constructor<Applet>> apps() {
+		return (Collection<Constructor<Applet>>) apps.clone();
 	}
 	
-	static boolean runApplet(String name, String[] args) {
-		Constructor<?> constructor = appShortcuts.get(name);
-		if(constructor == null) return false;
-		try {
-			Object obj = constructor.newInstance(new Object[] { root, args });
-			if(!(obj instanceof Applet)) throw new InstantiationException("Object "+obj+" is not an instance of sara.Applet!");
-			return true;
-		} catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
-			e.printStackTrace();
-		}
-		return false;
-	}
+	public static final Applet root;
+	public static Localization loc;
 	
-	static void init(Applet app) {
-		if(app.initted) throw new RuntimeException("Applet was already initted!");
-		
-		new Thread(new Initter(app)).start();
+	public static final ZoneId gmt;
+	
+	static void init(Applet e) {
+		new Thread(new Initter(e)).start();
 	}
 	
 	private static class Initter implements Runnable {
-		Applet app;
+		Applet toInit;
 		
-		Initter(Applet app) {
-			this.app = app;
+		private Initter(Applet e) {
+			toInit = e;
 		}
 		
 		@Override
 		public void run() {
-			app.setVisible(true);
+			toInit.panel.frame.setVisible(true);
 			
-			while(!app.window.isDisplayable()) {
-				try { Thread.sleep(10); } // wait until window is displayable
-				catch(InterruptedException e) {}
+			try { Thread.sleep(10); } // just give it a mo
+			catch(InterruptedException e) {}
+			while(!toInit.panel.isDisplayable()) {
+				try { Thread.sleep(10); }
+				catch(InterruptedException e) {} // ignore? yes
 			}
 			
-			app.init();
-			allApps.add(app);
-			app.initted = true;
+			toInit.panel.graphicsText = toInit.panel.createVolatileImage(1, 1).createGraphics();
+//			toInit.panel.frame.pack();
+			
+			toInit.onInit();
+			toInit.refreshDisplay();
 		}
 	}
 	
-	static void exit(int status) {
-		try {
-			root.close();
-		} catch (IllegalStateException e) {}
-		
-		// SAVE USERCFG
-		userdata.put("names", names);
-		userdata.put("username", username);
-		
-		userdata.save();
-		
+	public static void exit(int status) {
 		System.exit(status);
 	}
 }
