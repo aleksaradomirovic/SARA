@@ -51,4 +51,12 @@ public abstract class Dialog<E> extends Applet {
 	public static int getMenuDialog(Applet parent, String query, String[] opts) {
 		return getDialog(new MenuSelector(parent, query, opts));
 	}
+	
+	public static int getConfirmDialog(Applet parent, String query, boolean cancelAvailable) {
+		return getDialog(new ConfirmDialog(parent, query, cancelAvailable));
+	}
+	
+	public static int getConfirmDialog(Applet parent, String query) {
+		return getDialog(new ConfirmDialog(parent, query, true));
+	}
 }

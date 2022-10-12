@@ -29,6 +29,7 @@ public class ScrollingFieldPane extends Screen implements Iterable<Screen> {
 	@Override
 	public void remove(Screen child) {
 		elements.remove(child);
+		if(scrollPos == elements.size()) scrollPos--;
 		redraw();
 	}
 	
@@ -45,6 +46,7 @@ public class ScrollingFieldPane extends Screen implements Iterable<Screen> {
 	
 	public Screen remove(int pos) {
 		Screen r = elements.remove(pos);
+		if(scrollPos == elements.size()) scrollPos--;
 		redraw();
 		return r;
 	}

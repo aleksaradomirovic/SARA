@@ -70,7 +70,7 @@ public class SARAIO {
 	}
 	
 	public static int charsz(int encoding) {
-		return encoding % 2 == 0 ? encoding : 1;
+		return encoding % 2 == 0 && encoding > 0 ? encoding : 1;
 	}
 	
 	public static int[] asText(byte[] f) throws IOException {
@@ -96,9 +96,17 @@ public class SARAIO {
 		return r;
 	}
 	
+	public static char[] getChars(int[] f) {
+		return getChars(f, 0, f.length);
+	}
+	
 	public static byte[] toByteStream(char[] in, final int encoding) {
+		return toByteStream(in, encoding, 0);
+	}
+	
+	public static byte[] toByteStream(char[] in, final int encoding, final int min_len) {
 		final int wt = charsz(encoding);
-		byte[] r = new byte[in.length*wt + encoding];
+		byte[] r = new byte[Math.max(min_len, in.length*wt + encoding)];
 		
 		switch(encoding) {
 			case 3: { // UTF8BOM

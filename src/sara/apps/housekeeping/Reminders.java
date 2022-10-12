@@ -103,6 +103,12 @@ public final class Reminders extends Applet {
 				}
 				break;
 			}
+			case KeyEvent.VK_DELETE: {
+				if(focus != null && Dialog.getConfirmDialog(parent, "Confirm deleting event '"+String.valueOf(focus.title)+"'?") == 1) {
+					list.remove(focus);
+				}
+				break;
+			}
 		}
 		refreshDisplay();
 	}

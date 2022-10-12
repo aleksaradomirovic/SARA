@@ -44,14 +44,17 @@ public abstract class ConsoleApplet extends Applet {
 
 	public void writeln(char[] x) {
 		printStream.writeln(x);
+		refreshDisplay();
 	}
 	
 	public void writeln(String x) {
 		printStream.writeln(StringTools.cp(x));
+		refreshDisplay();
 	}
 	
 	public void writeln(char[] x, Color[] fg, Color[] bg) {
 		printStream.writeln(x, fg, bg);
+		refreshDisplay();
 	}
 	
 	public void writeln(String in, Color fg, Color bg) {

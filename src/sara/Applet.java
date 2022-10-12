@@ -147,7 +147,13 @@ public abstract class Applet {
 			if(LCDMode) graphicsText.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 		}
 		
+		private boolean drawing = false;
 		private void draw(Screen disp) {
+			if(drawing) {
+				drawing = false;
+				return;
+			}
+			drawing = true;
 			if(graphicsText == null || disp == null) return;
 			graphicsText.setFont(f);
 			
@@ -163,6 +169,11 @@ public abstract class Applet {
 				}
 			}
 			
+			if(!drawing) {
+				draw(disp);
+				return;
+			}
+			drawing = false;
 
 			graphics.drawImage(bufBG, 0, 0, null);
 			graphics.drawImage(bufText, 0, 0, null);
